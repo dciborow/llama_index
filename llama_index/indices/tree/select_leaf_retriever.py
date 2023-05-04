@@ -129,9 +129,7 @@ class TreeSelectLeafRetriever(BaseRetriever):
                 level=level + 1,
             )
 
-        if prev_response is None:
-            return cur_response
-        else:
+        if prev_response is not None:
             context_msg = selected_node.get_text()
             (
                 cur_response,
@@ -145,7 +143,7 @@ class TreeSelectLeafRetriever(BaseRetriever):
 
             logger.debug(f">[Level {level}] Refine prompt: {formatted_refine_prompt}")
             logger.debug(f">[Level {level}] Current refined response: {cur_response} ")
-            return cur_response
+        return cur_response
 
     def _query_level(
         self,
@@ -398,13 +396,13 @@ class TreeSelectLeafRetriever(BaseRetriever):
         children_nodes = {}
         for node in selected_nodes:
             node_dict = self._index_struct.get_children(node)
-            children_nodes.update(node_dict)
+            children_nodes |= node_dict
 
-        if len(children_nodes) == 0:
-            # NOTE: leaf level
-            return selected_nodes
-        else:
-            return self._retrieve_level(children_nodes, query_bundle, level + 1)
+        return (
+            self._retrieve_level(children_nodes, query_bundle, level + 1)
+            if children_nodes
+            else selected_nodes
+        )
 
     @llm_token_counter("retrieve")
     def _retrieve(
